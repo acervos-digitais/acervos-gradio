@@ -14,6 +14,7 @@ OBJS_URLS = "https://raw.githubusercontent.com/acervos-digitais/herbario-data/ma
 IMG_URL = "https://digitais.acervos.at.eu.org/imgs/herbario/arts"
 IMG_CROPS_DIR = "./imgs/crops"
 IMG_FULL_DIR = "./imgs/full"
+IMG_500_DIR = "./imgs/500"
 GRID_MIN_CROP_HEIGHT = 64
 XY_OUT_DIM = (1024, 1024)
 XY_CROP_MAX = 0.45
@@ -67,12 +68,35 @@ def get_mosaic_size(idBoxes_all, height_min, sizes):
   return int(mos_w), int(mos_h), scale
 
 
+def get_grid_mosaic(idBoxes_in):
+  ncols = int(len(idBoxes_in) ** 0.5)
+  nrows = ncols + 2
+  swh = int(XY_OUT_DIM[0] // ncols)
+
+  mos_img = PImage.fromarray(np.zeros((swh*nrows, swh*ncols))).convert("RGB")
+  miw,mih = mos_img.size
+
+  for i,idBoxes in enumerate(idBoxes_in):
+    id = idBoxes["id"]
+    img = PImage.open(path.join(IMG_500_DIR, f"{id}.jpg")).convert("RGB")
+    iw,ih = img.size
+    cw,ch = min(iw,ih),min(iw,ih)
+    simg = img.crop((0,0,cw,ch)).resize((swh,swh))
+    cur_x = (i % ncols) * swh
+    cur_y = (i // ncols) * swh
+
+    mos_img.paste(simg, (cur_x, cur_y))
+
+  return mos_img.crop((0,0,miw,miw))
+
+
 def get_crop_img(boxKey):
   if boxKey in box2fname:
     fname = box2fname[boxKey]
     cimg = PImage.open(path.join(IMG_CROPS_DIR, fname))
     crop_w, crop_h = cimg.size
   else:
+    (id,x0,y0,x1,y1) = boxKey
     img = PImage.open(path.join(IMG_FULL_DIR, f"{id}.jpg")).convert("RGB")
     iw,ih = img.size
     src_x0, src_y0, src_x1, src_y1 = boxpct2pix((x0,y0,x1,y1), (iw,ih))
@@ -81,7 +105,7 @@ def get_crop_img(boxKey):
   return cimg, crop_w, crop_h
 
 
-def get_objetcs_grid_mosaic(idBoxes_in):
+def get_objetcs_mosaic(idBoxes_in):
   idBoxes_all = [x for x in idBoxes_in if len(x["boxes"]) > 0]
 
   height_min, sizes = get_min_height_and_size(idBoxes_all)
@@ -175,9 +199,11 @@ def get_xy_mosaic(idBoxes_in):
 ### prep files and dirs
 makedirs(IMG_CROPS_DIR, exist_ok=True)
 makedirs(IMG_FULL_DIR, exist_ok=True)
+makedirs(IMG_500_DIR, exist_ok=True)
 
 download_extract(f"{IMG_URL}/crops.tgz", "./imgs")
 download_extract(f"{IMG_URL}/full.tgz", "./imgs")
+download_extract(f"{IMG_URL}/500.tgz", "./imgs")
 
 box2fname = get_crop_filenames(OBJS_URLS)
 
@@ -185,9 +211,18 @@ box2fname = get_crop_filenames(OBJS_URLS)
 ### start Gradio
 with gr.Blocks() as demo:
   gr.Interface(
+    title="grid",
+    api_name="grid",
+    fn=get_grid_mosaic,
+    inputs="json",
+    outputs="image",
+    flagging_mode="never",
+  )
+
+  gr.Interface(
     title="objects",
     api_name="objects",
-    fn=get_objetcs_grid_mosaic,
+    fn=get_objetcs_mosaic,
     inputs="json",
     outputs="image",
     flagging_mode="never",
