@@ -6,11 +6,13 @@ import numpy as np
 from os import makedirs, path
 from PIL import Image as PImage
 
-from utils import download_extract, download_file
+from utils import download_extract, download_file, get_crop_filenames
 from utils import boxpct2pix, centerpct2boxpix
 
 
+OBJS_URLS = "https://raw.githubusercontent.com/acervos-digitais/herbario-data/main/json/20250705_processed.json"
 IMG_URL = "https://digitais.acervos.at.eu.org/imgs/herbario/arts"
+IMG_CROPS_DIR = "./imgs/crops"
 IMG_FULL_DIR = "./imgs/full"
 GRID_MIN_CROP_HEIGHT = 64
 XY_OUT_DIM = (1024, 1024)
@@ -65,7 +67,21 @@ def get_mosaic_size(idBoxes_all, height_min, sizes):
   return int(mos_w), int(mos_h), scale
 
 
-def get_grid_mosaic(idBoxes_in):
+def get_crop_img(boxKey):
+  if boxKey in box2fname:
+    fname = box2fname[boxKey]
+    cimg = PImage.open(path.join(IMG_CROPS_DIR, fname))
+    crop_w, crop_h = cimg.size
+  else:
+    img = PImage.open(path.join(IMG_FULL_DIR, f"{id}.jpg")).convert("RGB")
+    iw,ih = img.size
+    src_x0, src_y0, src_x1, src_y1 = boxpct2pix((x0,y0,x1,y1), (iw,ih))
+    cimg = img.crop((src_x0, src_y0, src_x1, src_y1))
+    crop_w, crop_h = cimg.size
+  return cimg, crop_w, crop_h
+
+
+def get_objetcs_grid_mosaic(idBoxes_in):
   idBoxes_all = [x for x in idBoxes_in if len(x["boxes"]) > 0]
 
   height_min, sizes = get_min_height_and_size(idBoxes_all)
@@ -78,12 +94,8 @@ def get_grid_mosaic(idBoxes_in):
     id = idBoxes["id"]
 
     for (x0,y0,x1,y1) in idBoxes["boxes"]:
-      img = PImage.open(path.join(IMG_FULL_DIR, f"{id}.jpg")).convert("RGB")
-      iw,ih = img.size
-      src_x0, src_y0, src_x1, src_y1 = boxpct2pix((x0,y0,x1,y1), (iw,ih))
-
-      cimg = img.crop((src_x0, src_y0, src_x1, src_y1))
-      crop_w, crop_h = cimg.size
+      boxKey = (id,x0,y0,x1,y1)
+      cimg, crop_w, crop_h = get_crop_img(boxKey)
 
       scale_factor = limit_scale * (height_min / crop_h)
       crop_w, crop_h = int(scale_factor * crop_w), int(scale_factor * crop_h)
@@ -161,16 +173,21 @@ def get_xy_mosaic(idBoxes_in):
 
 
 ### prep files and dirs
+makedirs(IMG_CROPS_DIR, exist_ok=True)
 makedirs(IMG_FULL_DIR, exist_ok=True)
+
+download_extract(f"{IMG_URL}/crops.tgz", "./imgs")
 download_extract(f"{IMG_URL}/full.tgz", "./imgs")
+
+box2fname = get_crop_filenames(OBJS_URLS)
 
 
 ### start Gradio
 with gr.Blocks() as demo:
   gr.Interface(
-    title="grid",
-    api_name="grid",
-    fn=get_grid_mosaic,
+    title="objects",
+    api_name="objects",
+    fn=get_objetcs_grid_mosaic,
     inputs="json",
     outputs="image",
     flagging_mode="never",

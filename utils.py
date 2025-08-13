@@ -1,3 +1,4 @@
+import json
 import tarfile
 
 from os import path, remove
@@ -52,3 +53,19 @@ def centerpct2boxpix(cpct, len, dim):
     constrain(int(cx * w + cw / 2), 0, w),
     constrain(int(cy * h + ch / 2), 0, h),
   )
+
+
+def get_crop_filenames(objs_url):
+  objs_file_path = download_file(objs_url)
+  with open(objs_file_path, "r") as ifp:
+    all_data = json.load(ifp)
+
+  box2fname = {}
+  for id,v in all_data.items():
+    for idx,o in enumerate(v["objects"]):
+      (x0,y0,x1,y1) = o["box"]
+      boxKey = (id,x0,y0,x1,y1)
+      idx_str = f"0000{idx}"[-4:]
+      box2fname[boxKey] = f"{id}_{idx_str}.jpg"
+
+  return box2fname
