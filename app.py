@@ -6,7 +6,7 @@ import numpy as np
 from os import makedirs, path
 from PIL import Image as PImage
 
-from utils import download_extract, download_file, get_crop_filenames
+from utils import download_extract, get_crop_filenames
 from utils import boxpct2pix, centerpct2boxpix
 
 
@@ -215,7 +215,7 @@ with gr.Blocks() as demo:
     api_name="grid",
     fn=get_grid_mosaic,
     inputs="json",
-    outputs="image",
+    outputs=gr.Image(format="jpeg"),
     flagging_mode="never",
   )
 
@@ -224,7 +224,7 @@ with gr.Blocks() as demo:
     api_name="objects",
     fn=get_objetcs_mosaic,
     inputs="json",
-    outputs="image",
+    outputs=gr.Image(format="jpeg"),
     flagging_mode="never",
   )
 
@@ -233,7 +233,7 @@ with gr.Blocks() as demo:
     api_name="xy",
     fn=get_xy_mosaic,
     inputs="json",
-    outputs="image",
+    outputs=gr.Image(format="jpeg"),
     flagging_mode="never",
   )
 
