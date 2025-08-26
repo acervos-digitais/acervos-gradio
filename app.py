@@ -157,6 +157,10 @@ def get_xy_mosaic(idBoxes_in):
   pix_cnts = np.zeros(XY_OUT_DIM)
   pix_vals = np.zeros((*XY_OUT_DIM, 3))
 
+  pix_all_cnts = np.zeros(XY_OUT_DIM)
+  pix_all_vals = np.zeros((*XY_OUT_DIM, 3))
+  just_big = True
+
   for idBoxes in idBoxes_all:
     id = idBoxes["id"]
 
@@ -169,9 +173,6 @@ def get_xy_mosaic(idBoxes_in):
     for (x0,y0,x1,y1) in idBoxes["boxes"]:
       crop_w = (x1 - x0)
       crop_h = (y1 - y0)
-
-      if crop_w > XY_CROP_MAX or crop_h > XY_CROP_MAX:
-        continue
 
       center_x = (x0 + x1) / 2
       center_y = (y0 + y1) / 2
@@ -186,14 +187,25 @@ def get_xy_mosaic(idBoxes_in):
       dst_h = dst_y1 - dst_y0
 
       crop_vals = np.array(img.crop((src_x0, src_y0, src_x1, src_y1)).resize((dst_w, dst_h)))
-      pix_vals[dst_y0:dst_y1, dst_x0:dst_x1] += crop_vals
-      pix_cnts[dst_y0:dst_y1, dst_x0:dst_x1] += 1
 
-  pix_cnts_div = np.expand_dims(pix_cnts.copy(), axis=-1)
-  pix_cnts_div[pix_cnts == 0] = 1
+      if crop_w < XY_CROP_MAX and crop_h < XY_CROP_MAX:
+        just_big = False
+        pix_vals[dst_y0:dst_y1, dst_x0:dst_x1] += crop_vals
+        pix_cnts[dst_y0:dst_y1, dst_x0:dst_x1] += 1
 
-  pix_avg = pix_vals / pix_cnts_div
-  return PImage.fromarray(pix_avg.astype(np.uint8))
+      pix_all_vals[dst_y0:dst_y1, dst_x0:dst_x1] += crop_vals
+      pix_all_cnts[dst_y0:dst_y1, dst_x0:dst_x1] += 1
+
+  if just_big:
+    pix_all_cnts_div = np.expand_dims(pix_all_cnts.copy(), axis=-1)
+    pix_all_cnts_div[pix_all_cnts == 0] = 1
+    pix_all_avg = pix_all_vals / pix_all_cnts_div
+    return PImage.fromarray(pix_all_avg.astype(np.uint8))
+  else:
+    pix_cnts_div = np.expand_dims(pix_cnts.copy(), axis=-1)
+    pix_cnts_div[pix_cnts == 0] = 1
+    pix_avg = pix_vals / pix_cnts_div
+    return PImage.fromarray(pix_avg.astype(np.uint8))
 
 
 ### prep files and dirs
