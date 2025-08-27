@@ -1,5 +1,3 @@
-import json
-
 import gradio as gr
 import numpy as np
 
@@ -69,9 +67,13 @@ def get_mosaic_size(idBoxes_all, height_min, sizes):
 
 
 def get_grid_mosaic(idBoxes_in):
-  ncols = int(len(idBoxes_in) ** 0.5)
-  nrows = ncols + 2
-  swh = int(XY_OUT_DIM[0] // ncols)
+  nrows = int(len(idBoxes_in) ** 0.5)
+  ncols = nrows
+
+  if nrows * (ncols + 1) <= len(idBoxes_in):
+    ncols += 1
+
+  swh = int(XY_OUT_DIM[0] // nrows)
 
   mos_img = PImage.fromarray(np.zeros((swh*nrows, swh*ncols))).convert("RGB")
   miw,mih = mos_img.size
@@ -87,7 +89,7 @@ def get_grid_mosaic(idBoxes_in):
 
     mos_img.paste(simg, (cur_x, cur_y))
 
-  return mos_img.crop((0,0,miw,miw))
+  return mos_img.crop((0,0,miw,mih))
 
 
 def get_crop_img(boxKey):
