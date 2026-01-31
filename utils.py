@@ -4,12 +4,15 @@ import tarfile
 from os import path, remove
 from urllib import request
 
+headers = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+}
 
 def download_file(url, local_path="."):
   file_name = url.split("/")[-1]
   file_path = path.join(local_path, file_name)
 
-  with request.urlopen(request.Request(url), timeout=30.0) as response:
+  with request.urlopen(request.Request(url, headers=headers), timeout=30.0) as response:
     if response.status == 200:
       with open(file_path, "wb") as f:
         f.write(response.read())
