@@ -1,2 +1,2 @@
 pydantic==2.8.2
-
+huggingface-hub==0.34.3
