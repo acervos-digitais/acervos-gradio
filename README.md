@@ -9,3 +9,5 @@ sdk_version: 5.0.2
 app_file: app.py
 pinned: false
 ---
+
+Gradio App/API to create mosaics from images in meta-acervos database.
