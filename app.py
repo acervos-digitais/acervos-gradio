@@ -6,6 +6,7 @@ from PIL import Image as PImage
 
 from utils import download_extract, get_crop_filenames
 from utils import boxpct2pix, centerpct2boxpix
+from utils import to_heatmap_image
 
 
 OBJS_URLS = "https://raw.githubusercontent.com/acervos-digitais/herbario-data/main/json/20250705_processed.json"
@@ -107,7 +108,7 @@ def get_crop_img(boxKey):
   return cimg, crop_w, crop_h
 
 
-def get_objetcs_mosaic(idBoxes_in):
+def get_objects_mosaic(idBoxes_in):
   idBoxes_all = [x for x in idBoxes_in if len(x["boxes"]) > 0]
 
   height_min, sizes = get_min_height_and_size(idBoxes_all)
@@ -153,7 +154,7 @@ def get_objetcs_mosaic(idBoxes_in):
   return mos_img
 
 
-def get_xy_mosaic(idBoxes_in):
+def get_composition_info(idBoxes_in):
   idBoxes_all = [x for x in idBoxes_in if len(x["boxes"]) > 0]
 
   pix_cnts = np.zeros(XY_OUT_DIM)
@@ -199,15 +200,24 @@ def get_xy_mosaic(idBoxes_in):
       pix_all_cnts[dst_y0:dst_y1, dst_x0:dst_x1] += 1
 
   if just_big:
-    pix_all_cnts_div = np.expand_dims(pix_all_cnts.copy(), axis=-1)
-    pix_all_cnts_div[pix_all_cnts == 0] = 1
-    pix_all_avg = pix_all_vals / pix_all_cnts_div
-    return PImage.fromarray(pix_all_avg.astype(np.uint8))
+    return pix_all_vals, pix_all_cnts
   else:
-    pix_cnts_div = np.expand_dims(pix_cnts.copy(), axis=-1)
-    pix_cnts_div[pix_cnts == 0] = 1
-    pix_avg = pix_vals / pix_cnts_div
-    return PImage.fromarray(pix_avg.astype(np.uint8))
+    return pix_vals, pix_cnts
+
+
+def get_composition_mosaic(idBoxes_in):
+  pix_vals, pix_cnts = get_composition_info(idBoxes_in)
+
+  pix_cnts_div = np.expand_dims(pix_cnts.copy(), axis=-1)
+  pix_cnts_div[pix_cnts == 0] = 1
+  pix_avg = pix_vals / pix_cnts_div
+  return PImage.fromarray(pix_avg.astype(np.uint8))
+
+
+def get_heatmap_mosaic(idBoxes_in):
+  pix_vals, pix_cnts = get_composition_info(idBoxes_in)
+  pxs_01 = pix_cnts / pix_cnts.max()
+  return to_heatmap_image(pxs_01)
 
 
 ### prep files and dirs
@@ -236,16 +246,25 @@ with gr.Blocks() as demo:
   gr.Interface(
     title="objects",
     api_name="objects",
-    fn=get_objetcs_mosaic,
+    fn=get_objects_mosaic,
     inputs="json",
     outputs=gr.Image(format="jpeg"),
     flagging_mode="never",
   )
 
   gr.Interface(
-    title="xy",
-    api_name="xy",
-    fn=get_xy_mosaic,
+    title="composition",
+    api_name="composition",
+    fn=get_composition_mosaic,
+    inputs="json",
+    outputs=gr.Image(format="jpeg"),
+    flagging_mode="never",
+  )
+
+  gr.Interface(
+    title="heatmap",
+    api_name="heatmap",
+    fn=get_heatmap_mosaic,
     inputs="json",
     outputs=gr.Image(format="jpeg"),
     flagging_mode="never",
