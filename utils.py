@@ -1,6 +1,4 @@
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 import json
 import numpy as np
@@ -81,11 +79,7 @@ def get_crop_filenames(objs_url):
 
 
 # [ 'viridis', 'plasma', 'inferno', 'magma' ]
-def to_heatmap_image(data, dpi=100, map="inferno"):
-  fig, ax = plt.subplots(figsize=(data.shape[1] // dpi, data.shape[0] // dpi), frameon=False)
-  fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-  ax.axis("off")
-  ax.imshow(data, cmap=map, interpolation="nearest")
-  fig.canvas.draw()
-  rgba_buffer = np.asarray(fig.canvas.buffer_rgba())
-  return PImage.fromarray(rgba_buffer).convert("RGB")
+def to_heatmap_image(data, cmap="inferno"):
+  map_fun_np = np.vectorize(cm.get_cmap(cmap))
+  rgba_np = 255 * np.stack(map_fun_np(data)[:3], axis=-1)
+  return PImage.fromarray(rgba_np.astype(np.uint8)).convert("RGB")
